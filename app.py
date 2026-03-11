@@ -7,9 +7,7 @@ import sys
 import threading
 
 if sys.version_info >= (3, 13):
-    from gevent import monkey  # type: ignore[import]
-    monkey.patch_all()
-    _ASYNC_MODE = "gevent"
+    _ASYNC_MODE = "threading"
 else:
     import eventlet
     eventlet.monkey_patch()
