@@ -1,0 +1,20 @@
+# 웹 프레임워크
+Flask==3.1.0
+flask-socketio==5.3.6
+eventlet==0.36.1
+
+# 오디오 처리
+librosa==0.11.0
+soundfile==0.12.1
+pydub==0.25.1
+scipy==1.14.1
+numpy==1.26.4
+
+# 시각화
+matplotlib==3.9.4
+
+# Excel 출력
+openpyxl==3.1.5
+
+# 유틸리티
+python-dotenv==1.0.1

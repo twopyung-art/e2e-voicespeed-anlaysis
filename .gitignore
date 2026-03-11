@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# 가상환경
+.venv/
+venv/
+env/
+
+# 분석 결과물 (용량이 크므로 제외)
+results/
+audio/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 환경변수
+.env

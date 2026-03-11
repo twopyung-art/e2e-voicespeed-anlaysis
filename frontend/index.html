@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>음성 스피커 E2E 속도 측정기</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+
+<!-- ── 사이드바 ───────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>🎙️ E2E 측정기</h1>
+    <span>음성 스피커 응답속도 분석</span>
+  </div>
+
+  <div class="sidebar-section">메뉴</div>
+  <div class="sidebar-item active" onclick="document.getElementById('folder-list').scrollIntoView({behavior:'smooth'})">
+    <span class="icon">📊</span> 분석 대시보드
+  </div>
+
+  <div class="sidebar-section">명령어 목록</div>
+  <div id="sidebar-folder-list"></div>
+
+  <div class="sidebar-section">결과</div>
+  <div class="sidebar-item" onclick="downloadExcel()">
+    <span class="icon">📥</span> Excel 다운로드
+  </div>
+  <div class="sidebar-item" onclick="downloadJson()">
+    <span class="icon">📄</span> JSON 다운로드
+  </div>
+
+  <div class="sidebar-section">기준 음원</div>
+  <div id="ref-status-box" style="padding:8px 16px">
+    <div id="ref-recog-status" class="ref-status-item">
+      <span class="ref-dot ref-dot-off"></span>
+      <span>인식음 <span class="ref-label">미로드</span></span>
+    </div>
+    <div id="ref-middle-status" class="ref-status-item">
+      <span class="ref-dot ref-dot-off"></span>
+      <span>중간음 <span class="ref-label">미로드</span></span>
+    </div>
+    <div style="margin-top:6px">
+      <button class="btn-ref-reload" onclick="reloadReference()">↺ 재로드</button>
+    </div>
+  </div>
+
+  <div class="sidebar-section">도움말</div>
+  <div class="sidebar-item" onclick="openGuide()">
+    <span class="icon">📖</span> 사용 가이드
+  </div>
+
+  <div class="sidebar-footer">
+    <div style="font-size:11px;color:rgba(196,181,253,0.5);line-height:1.6">
+      T0: 음성끝~인식음<br>
+      T1: 인식음~중간음①<br>
+      T2: 중간음①~중간음②<br>
+      T3: 중간음②~최종응답<br>
+      <strong style="color:#C4B5FD">E2E = T1+T2+T3</strong>
+    </div>
+  </div>
+</aside>
+
+<!-- ── 메인 ────────────────────────────────────────────── -->
+<div class="main">
+  <!-- 상단 바 -->
+  <div class="topbar">
+    <h2>분석 대시보드</h2>
+    <button class="btn btn-outline" id="btn-download-json" style="display:none" onclick="downloadJson()">
+      📄 JSON
+    </button>
+    <button class="btn btn-success" id="btn-download-excel" style="display:none" onclick="downloadExcel()">
+      📥 Excel 다운로드
+    </button>
+    <button class="btn btn-primary" id="btn-analyze">
+      ▶ 분석 시작
+    </button>
+  </div>
+
+  <!-- 콘텐츠 -->
+  <div class="content">
+
+    <!-- 요약 카드 4개 -->
+    <div class="summary-cards">
+      <div class="summary-card accent">
+        <div class="label">명령어 수</div>
+        <div class="value" id="sc-total-folders">—</div>
+        <div class="sub">폴더 기준</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">전체 파일</div>
+        <div class="value" id="sc-total-files">—</div>
+        <div class="sub">녹음 파일</div>
+      </div>
+      <div class="summary-card success">
+        <div class="label">완료</div>
+        <div class="value" id="sc-completed">0</div>
+        <div class="sub">분석 완료 파일</div>
+      </div>
+      <div class="summary-card warning">
+        <div class="label">E2E 평균</div>
+        <div class="value" id="sc-avg-e2e">—</div>
+        <div class="sub">전체 평균 (8회)</div>
+      </div>
+    </div>
+
+    <!-- 폴더별 분석 결과 -->
+    <div id="folder-list"></div>
+
+  </div>
+</div>
+
+<!-- ── 파형 이미지 모달 ────────────────────────────────── -->
+<div class="modal-overlay" id="modal-overlay">
+  <img id="modal-img" src="" alt="파형 분석">
+</div>
+
+<!-- ── 사용 가이드 모달 ───────────────────────────────── -->
+<div class="guide-overlay" id="guide-overlay" onclick="closeGuide(event)">
+  <div class="guide-modal">
+    <div class="guide-header">
+      <h2>📖 사용 가이드</h2>
+      <button class="guide-close" onclick="closeGuide()">✕</button>
+    </div>
+    <div class="guide-body">
+
+      <!-- STEP 1 -->
+      <div class="guide-section">
+        <div class="guide-step-badge">STEP 1</div>
+        <h3>사전 설치</h3>
+        <div class="guide-block">
+          <div class="guide-block-title">🔧 ffmpeg 설치 (필수 — m4a/wav 등 오디오 파일 처리)</div>
+          <pre class="guide-code"># 방법 1: winget (Windows 10/11 권장)
+winget install ffmpeg
+
+# 방법 2: 수동 설치
+# https://ffmpeg.org/download.html → Windows 빌드 다운로드
+# 압축 해제 후 bin 폴더를 시스템 PATH에 추가
+
+# 설치 확인
+ffmpeg -version</pre>
+          <div class="guide-block-title" style="margin-top:12px">📦 Python 패키지 설치</div>
+          <pre class="guide-code">pip install -r requirements.txt</pre>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="guide-section">
+        <div class="guide-step-badge">STEP 2</div>
+        <h3>오디오 파일 배치</h3>
+        <p class="guide-desc">
+          프로젝트 폴더 안의 <code>audio/</code> 폴더에 <b>명령어명 폴더</b>를 만들고
+          녹음 파일을 넣어주세요. 파일은 최대 10개를 권장합니다.
+        </p>
+        <div class="guide-block">
+          <div class="guide-block-title">📂 폴더 구조 예시</div>
+          <pre class="guide-code">audio/
+  ├── Check tomorrow's schedule/
+  │     ├── Calendar tomorrow 1.m4a
+  │     ├── Calendar tomorrow 2.m4a
+  │     └── ... (최대 10개)
+  └── What's my schedule today/
+        ├── Calendar today 1.wav
+        └── ...</pre>
+        </div>
+        <div class="guide-support-formats">
+          <div class="guide-block-title">✅ 지원 오디오 포맷</div>
+          <div class="guide-format-tags">
+            <span>.m4a</span><span>.wav</span><span>.mp3</span><span>.flac</span>
+            <span>.aac</span><span>.ogg</span><span>.wma</span><span>.mp4</span>
+            <span>.opus</span><span>.aiff</span><span>.amr</span><span>.3gp</span>
+          </div>
+          <p class="guide-note">※ ffmpeg가 설치되어 있으면 위 포맷 모두 지원됩니다.</p>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="guide-section">
+        <div class="guide-step-badge">STEP 3</div>
+        <h3>분석 실행</h3>
+        <div class="guide-block">
+          <div class="guide-block-title">▶ 서버 실행</div>
+          <pre class="guide-code">python app.py</pre>
+          <div class="guide-block-title" style="margin-top:12px">🌐 브라우저 접속</div>
+          <pre class="guide-code">http://localhost:5000</pre>
+        </div>
+        <p class="guide-desc">
+          브라우저에서 <b>▶ 분석 시작</b> 버튼을 클릭하면 audio/ 폴더의 모든 파일이 자동으로 분석됩니다.
+          파일이 1개뿐이어도 분석됩니다.
+        </p>
+      </div>
+
+      <!-- 타이밍 정의 -->
+      <div class="guide-section">
+        <div class="guide-step-badge guide-badge-info">T0~T3</div>
+        <h3>타이밍 구간 정의</h3>
+        <div class="guide-timing-diagram">
+          <div class="gtd-row">
+            <div class="gtd-block gtd-user">사용자<br>음성</div>
+            <div class="gtd-arrow">→</div>
+            <div class="gtd-label t0-label">T0</div>
+            <div class="gtd-arrow">→</div>
+            <div class="gtd-block gtd-recog">음성<br>인식음</div>
+            <div class="gtd-arrow">→</div>
+            <div class="gtd-label t1-label">T1</div>
+            <div class="gtd-arrow">→</div>
+            <div class="gtd-block gtd-mid">중간음<br>①</div>
+            <div class="gtd-arrow">→</div>
+            <div class="gtd-label t2-label">T2</div>
+            <div class="gtd-arrow">→</div>
+            <div class="gtd-block gtd-mid">중간음<br>②</div>
+            <div class="gtd-arrow">→</div>
+            <div class="gtd-label t3-label">T3</div>
+            <div class="gtd-arrow">→</div>
+            <div class="gtd-block gtd-final">최종<br>응답</div>
+          </div>
+        </div>
+        <table class="guide-table">
+          <thead><tr><th>구간</th><th>시작</th><th>끝</th><th>설명</th></tr></thead>
+          <tbody>
+            <tr><td><b>T0</b></td><td>사용자 음성 끝</td><td>음성인식음 시작</td><td>기기가 음성을 인식하기까지의 대기 시간</td></tr>
+            <tr><td><b>T1</b></td><td>음성인식음 시작</td><td>첫 번째 중간음 (없으면 최종응답)</td><td>인식 후 첫 반응까지의 시간</td></tr>
+            <tr><td><b>T2</b></td><td>첫 번째 중간음</td><td>두 번째 중간음 (없으면 0)</td><td>중간음 사이 처리 시간</td></tr>
+            <tr><td><b>T3</b></td><td>마지막 유효 중간음</td><td>최종응답 시작 (없으면 0)</td><td>마지막 중간음 후 최종 응답까지</td></tr>
+            <tr class="e2e-tr"><td><b>E2E</b></td><td colspan="2"><b>T1 + T2 + T3</b></td><td>최종 응답속도 (T0 미포함)</td></tr>
+          </tbody>
+        </table>
+        <div class="guide-block" style="margin-top:12px">
+          <div class="guide-block-title">중간음 횟수별 처리</div>
+          <table class="guide-table">
+            <thead><tr><th>중간음 횟수</th><th>T1</th><th>T2</th><th>T3</th></tr></thead>
+            <tbody>
+              <tr><td>0회</td><td>인식음 ~ 최종응답</td><td>0</td><td>0</td></tr>
+              <tr><td>1회</td><td>인식음 ~ 중간음①</td><td>0</td><td>중간음① ~ 최종응답</td></tr>
+              <tr><td>2회</td><td>인식음 ~ 중간음①</td><td>중간음① ~ 중간음②</td><td>중간음② ~ 최종응답</td></tr>
+              <tr><td>3회 이상</td><td>인식음 ~ 중간음①</td><td>중간음① ~ 중간음②</td><td>중간음② ~ 최종응답 (③ 무시)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 결과 확인 -->
+      <div class="guide-section">
+        <div class="guide-step-badge">STEP 4</div>
+        <h3>결과 확인 및 다운로드</h3>
+        <div class="guide-results-grid">
+          <div class="guide-result-item">
+            <div class="gri-icon">📊</div>
+            <div class="gri-title">개별 분석 결과</div>
+            <div class="gri-desc">파일별 T0~T3, E2E 값 카드로 표시.<br>파형 이미지 클릭 시 확대 가능.</div>
+          </div>
+          <div class="guide-result-item">
+            <div class="gri-icon">📈</div>
+            <div class="gri-title">평균 분석 결과</div>
+            <div class="gri-desc">파일 10개일 때만 표시.<br>최대·최소 각 1개 제외 후 8회 평균.</div>
+          </div>
+          <div class="guide-result-item">
+            <div class="gri-icon">📥</div>
+            <div class="gri-title">Excel 출력</div>
+            <div class="gri-desc">Sheet1: 파일별 상세 데이터<br>Sheet2: 폴더별 8회 평균 통계</div>
+          </div>
+          <div class="guide-result-item">
+            <div class="gri-icon">🖼️</div>
+            <div class="gri-title">파형 이미지</div>
+            <div class="gri-desc">results/images/ 폴더에 저장.<br>T0~T3 구간 컬러 음영 표시.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 파라미터 조정 -->
+      <div class="guide-section">
+        <div class="guide-step-badge guide-badge-warn">TIP</div>
+        <h3>감지 정확도 조정 (config.py)</h3>
+        <p class="guide-desc">
+          자동 감지가 부정확할 경우 <code>config.py</code>에서 아래 값을 조정하세요.
+        </p>
+        <table class="guide-table">
+          <thead><tr><th>파라미터</th><th>기본값</th><th>설명</th></tr></thead>
+          <tbody>
+            <tr><td><code>THRESHOLD_OFFSET_DB</code></td><td>15</td><td>높이면 더 큰 소리만 감지 (잡음이 많을 때 올리세요)</td></tr>
+            <tr><td><code>MIN_SEGMENT_DURATION</code></td><td>0.15s</td><td>이보다 짧은 구간은 잡음으로 무시</td></tr>
+            <tr><td><code>MAX_MERGE_GAP</code></td><td>0.08s</td><td>이 간격 이하의 침묵은 같은 구간으로 병합</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── 토스트 알림 ────────────────────────────────────── -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- SocketIO CDN -->
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+<script src="/js/websocket-client.js"></script>
+<script src="/js/dashboard.js"></script>
+</body>
+</html>
