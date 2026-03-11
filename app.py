@@ -3,9 +3,17 @@ Flask + SocketIO 메인 서버
 음성 E2E 속도 자동 측정기
 """
 import os
+import sys
 import threading
-import eventlet
-eventlet.monkey_patch()
+
+if sys.version_info >= (3, 13):
+    from gevent import monkey  # type: ignore[import]
+    monkey.patch_all()
+    _ASYNC_MODE = "gevent"
+else:
+    import eventlet
+    eventlet.monkey_patch()
+    _ASYNC_MODE = "eventlet"
 
 from flask import Flask, jsonify, send_from_directory, request, send_file, abort
 from flask_socketio import SocketIO
@@ -20,7 +28,7 @@ from websocket.event_emitter import EventEmitter
 
 app = Flask(__name__, static_folder="frontend", static_url_path="", template_folder="frontend")
 app.config["SECRET_KEY"] = "e2e-analyzer-secret"
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode=_ASYNC_MODE)
 emitter = EventEmitter(socketio)
 
 # 분석 세션 상태 저장

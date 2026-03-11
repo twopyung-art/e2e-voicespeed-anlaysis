@@ -1,7 +1,8 @@
 # 웹 프레임워크
 Flask==3.1.0
 flask-socketio==5.3.6
-eventlet==0.37.0
+eventlet==0.37.0; python_version < "3.13"
+gevent==24.11.1; python_version >= "3.13"
 
 # 오디오 처리
 librosa==0.11.0
