@@ -48,7 +48,7 @@ audio/
 python app.py
 ```
 
-브라우저에서 **http://localhost:5001** 접속 후 **▶ 분석 시작** 클릭
+브라우저에서 **http://localhost:8080** 접속 후 **▶ 분석 시작** 클릭
 
 ---
 
